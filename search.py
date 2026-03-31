@@ -1,22 +1,39 @@
 """
-Web search tool — wraps DuckDuckGo search (no API key needed for basic use).
+Web search tool — supports Tavily (preferred) and DuckDuckGo (fallback).
+When TAVILY_API_KEY is set, queries route through Tavily; otherwise DuckDuckGo is used.
 In Phase 5, this becomes an MCP server tool.
 """
 
+import os
 import urllib.request
 import urllib.parse
 import json
 import re
 
 
-def web_search(query: str, max_results: int = 5) -> list[dict]:
-    """
-    Search the web for a query and return top results.
-    Uses DuckDuckGo Instant Answer API (free, no key needed).
-    
-    Returns:
-        List of dicts with 'title', 'url', 'snippet'
-    """
+def _tavily_search(query: str, max_results: int = 5) -> list[dict]:
+    """Search using Tavily API. Requires TAVILY_API_KEY env var."""
+    from tavily import TavilyClient
+
+    client = TavilyClient()
+    response = client.search(query=query, max_results=max_results, search_depth="basic")
+
+    results = []
+    for item in response.get("results", []):
+        results.append({
+            "title": item.get("title", ""),
+            "url": item.get("url", ""),
+            "snippet": item.get("content", ""),
+        })
+
+    if not results:
+        return [{"title": "No results", "url": "", "snippet": f"No results found for: {query}. Try a more specific query."}]
+
+    return results
+
+
+def _duckduckgo_search(query: str, max_results: int = 5) -> list[dict]:
+    """Search using DuckDuckGo Instant Answer API (free, no key needed)."""
     try:
         encoded_query = urllib.parse.quote(query)
         url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&no_html=1&skip_disambig=1"
@@ -52,6 +69,23 @@ def web_search(query: str, max_results: int = 5) -> list[dict]:
 
     except Exception as e:
         return [{"title": "Search error", "url": "", "snippet": f"Search failed: {str(e)}"}]
+
+
+def web_search(query: str, max_results: int = 5) -> list[dict]:
+    """
+    Search the web for a query and return top results.
+    Uses Tavily when TAVILY_API_KEY is set, otherwise falls back to DuckDuckGo.
+
+    Returns:
+        List of dicts with 'title', 'url', 'snippet'
+    """
+    if os.environ.get("TAVILY_API_KEY"):
+        try:
+            return _tavily_search(query, max_results)
+        except Exception:
+            # Fall back to DuckDuckGo if Tavily fails
+            return _duckduckgo_search(query, max_results)
+    return _duckduckgo_search(query, max_results)
 
 
 if __name__ == "__main__":
