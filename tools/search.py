@@ -2,6 +2,7 @@
 SYNTHIA Search Tool — Phase 2
 Primary: Tavily API (built for AI agents, free tier available)
 Fallback: DuckDuckGo (no key needed)
+Opt-in: Parallel Search MCP (SYNTHIA_SEARCH_PROVIDER=parallel)
 
 Get a free Tavily API key at: https://tavily.com
 Add to .env: TAVILY_API_KEY=tvly-xxxxxxxx
@@ -15,7 +16,8 @@ import urllib.parse
 
 def web_search(query: str, max_results: int = 5) -> list[dict]:
     """
-    Search the web. Uses Tavily if key is available, falls back to DuckDuckGo.
+    Search the web. Opt into Parallel with SYNTHIA_SEARCH_PROVIDER=parallel.
+    Otherwise use Tavily if a key is available, falling back to DuckDuckGo.
 
     Args:
         query: Search query string
@@ -24,6 +26,10 @@ def web_search(query: str, max_results: int = 5) -> list[dict]:
     Returns:
         List of dicts with 'title', 'url', 'content'
     """
+    if os.getenv("SYNTHIA_SEARCH_PROVIDER", "").strip().lower() == "parallel":
+        from tools.parallel_search import parallel_search
+        return parallel_search(query, max_results)
+
     tavily_key = os.getenv("TAVILY_API_KEY")
 
     if tavily_key:

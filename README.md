@@ -90,6 +90,39 @@ pip install -r requirements.txt
 echo "ANTHROPIC_API_KEY=your-key-here" > .env
 ```
 
+### Optional: Parallel web search
+
+To use [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+for research, install the optional dependencies in your activated environment:
+
+```bash
+pip install -r requirements-parallel.txt
+```
+
+Add this setting to `.env` alongside your Anthropic key:
+
+```dotenv
+SYNTHIA_SEARCH_PROVIDER=parallel
+```
+
+Then run `python main.py` as usual. Parallel provides free anonymous web search
+in Fast mode through `https://search.parallel.ai/mcp`, with no Parallel account
+or API key needed. Results include source URLs and excerpts for the agent's
+reports. The Anthropic API key is still required to run the agent.
+
+Without this setting, search keeps its existing behavior: Tavily when
+`TAVILY_API_KEY` is set, with DuckDuckGo as the fallback. Selecting Parallel takes
+precedence over a saved Tavily key. Parallel failures, including free-tier limits,
+return a search error to the agent without switching providers. Each search has
+a 30-second deadline. Remove the setting to restore the existing routing.
+
+To try just the search tool without an Anthropic key, run this from the repository
+root (the command sets the provider directly and does not read `.env`):
+
+```bash
+python -c "import os; os.environ['SYNTHIA_SEARCH_PROVIDER'] = 'parallel'; from tools.search import web_search; print(web_search('Python 3.13 release highlights'))"
+```
+
 ### Run the Agent
 
 ```bash
